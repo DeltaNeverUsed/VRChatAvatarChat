@@ -48,7 +48,7 @@ namespace DeltaNeverUsed.AvChat
             
             var fx = aac.CreateMainFxLayer();
             var sender = aac.CreateSupportingFxLayer("NetworkSender");
-            var receiver = aac.CreateSupportingFxLayer("NetworkSender");
+            var receiver = aac.CreateSupportingFxLayer("NetworkReceiver");
 
             //Bit params
             var bits = new AacFlBoolParameter[8];
@@ -57,20 +57,35 @@ namespace DeltaNeverUsed.AvChat
                 bits[i] = fx.BoolParameter($"bit{i}");
             }
             
-            NetworkingFunctions.Init(aac, fx, sender, receiver, bits);
+            NetworkingFunctions.Init(
+                aac,
+                fx,
+                sender,
+                receiver,
+                bits,
+                my.networkContainer.transform.Find("NetworkSender").gameObject,
+                my.networkContainer.transform.Find("NetworkReceiver").gameObject
+                );
 
             var senderEntry = sender.NewState("Entry");
             var receiverEntry = receiver.NewState("Entry");
-
-            var activateSendingSignal = NetworkingFunctions.ActivateSendingSignal(my.networkContainer.transform.Find("NetworkSender").gameObject);
             
-            NetworkingFunctions.CanSend(activateSendingSignal, senderEntry);
+            
             
 
             //Sending parameters
 
             //Sending Logic
+            var activateSendingSignal = NetworkingFunctions.ActivateSendingSignal();
+            
+            NetworkingFunctions.CanSend(activateSendingSignal, senderEntry);
 
+            //var tempDst = sender.NewState("Temp");
+            
+            var serderSM = NetworkingFunctions.SendBits();
+
+
+            NetworkingFunctions.CheckNetworkAvailable(serderSM, activateSendingSignal);
 
             /* TODO Networking
              Sending:
@@ -82,10 +97,10 @@ namespace DeltaNeverUsed.AvChat
                 chatNetworkOccupied = true
                 wait 0.5ish seconds
                 
-                if chatNetworkOccupied 
+                if chatNetworkOccupied
                     return to start
                 else 
-                    repeat until done (Send Byte and activate byteSendSignal)
+                    repeat until done (Send Byte and activate byteSendSignal) <<<
                     ChatNetworkOccupied = false
                     return to start
              
