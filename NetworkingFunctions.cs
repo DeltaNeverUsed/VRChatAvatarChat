@@ -16,7 +16,8 @@ namespace DeltaNeverUsed.AvChat.NFuncs
         private static AacFlLayer _sender;
         private static AacFlLayer _receiver;
 
-        private static AacFlBoolParameter[] _bits;
+        private static AacFlBoolParameter[] _Sbits;
+        private static AacFlBoolParameter[] _Rbits;
 
         private static AacFlIntParameter _charPtr;
         private static AacFlIntParameter _charSize;
@@ -27,14 +28,16 @@ namespace DeltaNeverUsed.AvChat.NFuncs
         private static readonly Dictionary<AacFlLayer, AacFlState> ResetNodes =
             new Dictionary<AacFlLayer, AacFlState>();
 
-        public static void Init(AacFlBase tAac, AacFlLayer tFX, AacFlLayer tSender, AacFlLayer tReceiver, AacFlBoolParameter[] tBits,
+        public static void Init(AacFlBase tAac, AacFlLayer tFX, AacFlLayer tSender, AacFlLayer tReceiver,
+            AacFlBoolParameter[] tSBits, AacFlBoolParameter[] tRBits,
             GameObject tNetworkSender, GameObject tNetworkReceiver)
         {
             _aac = tAac;
             _fx = tFX;
             _sender = tSender;
             _receiver = tReceiver;
-            _bits = tBits;
+            _Sbits = tSBits;
+            _Rbits = tRBits;
 
             _networkSender = tNetworkSender;
             _networkReceiver = tNetworkReceiver;
@@ -52,8 +55,17 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             
             resetNode.WithAnimation(_aac.NewClip().Animating(clip =>
             {
-                clip.Animates(_networkSender.GetComponent<VRCContactSender>(), "radius")
-                    .WithOneFrame(0.1f);
+                clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
+                clip.Animates(_networkSender.transform, "m_LocalPosition.y").WithOneFrame(_networkSender.transform.localPosition.y);
+                clip.Animates(_networkSender.transform, "m_LocalPosition.z").WithOneFrame(0.5f);
+                
+                for (int o = 0; o < 8; o++)
+                {
+                    var s = _networkSender.transform.GetChild(o);
+                    clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
+                    clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
+                    clip.Animates(s, "m_LocalPosition.z").WithOneFrame(0.5f);
+                }
             }));
 
             resetNode.Exits().Automatically();
@@ -82,8 +94,9 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             var activateSendingSignal = _sender.NewState("NetworkOccupied")
                 .WithAnimation(_aac.NewClip().Animating(clip =>
                 {
-                    clip.Animates(_networkSender.GetComponent<VRCContactSender>(), "radius")
-                        .WithOneFrame(6f);
+                    clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
+                    clip.Animates(_networkSender.transform, "m_LocalPosition.y").WithOneFrame(_networkSender.transform.localPosition.y);
+                    clip.Animates(_networkSender.transform, "m_LocalPosition.z").WithOneFrame(0f);
                 }));
 
             return activateSendingSignal;
@@ -91,7 +104,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
 
         public static void Sleep(AacFlState smDst, AacFlState smSrc, float seconds)
         {
-            smSrc.TransitionsTo(smDst).WithTransitionDurationSeconds(0.1f);
+            smSrc.TransitionsTo(smDst).WithTransitionDurationSeconds(seconds).Automatically();
         }
         
         public static void CheckNetworkAvailable(AacFlStateMachine smDst, AacFlState smSrc)
@@ -116,9 +129,12 @@ namespace DeltaNeverUsed.AvChat.NFuncs
                 {
                     for (int o = 0; o < inputP.Length; o++)
                     {
-                        clip.Animates(_networkSender.transform.GetChild(o).GetComponent<VRCContactSender>(),
-                                "radius")
-                            .WithOneFrame(inputT[o + state * inputP.Length] ? 6f : 0.1f);
+                        var s = _networkSender.transform.GetChild(o);
+                        clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
+                        clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
+                        clip.Animates(s,
+                                "m_LocalPosition.z")
+                            .WithOneFrame(inputT[o + state * inputP.Length] ? 0f : 0.5f);
                     }
                 }));
                     
@@ -154,7 +170,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             
             var t = CreateBitAnimations(
                 dataSender,
-                _bits,
+                _Sbits,
                 cpTable.ToArray()
             );
 

@@ -51,18 +51,19 @@ namespace DeltaNeverUsed.AvChat
             var receiver = aac.CreateSupportingFxLayer("NetworkReceiver");
 
             //Bit params
-            var bits = new AacFlBoolParameter[8];
+            var sBits = new AacFlBoolParameter[8];
+            var rBits = new AacFlBoolParameter[8];
             for (var i = 0; i < 8; i++)
             {
-                bits[i] = fx.BoolParameter($"bit{i}");
+                sBits[i] = fx.BoolParameter($"bit{i}");
+                rBits[i] = fx.BoolParameter($"rbit{i}");
             }
             
             NetworkingFunctions.Init(
                 aac,
                 fx,
-                sender,
-                receiver,
-                bits,
+                sender, receiver,
+                sBits, sBits,
                 my.networkContainer.transform.Find("NetworkSender").gameObject,
                 my.networkContainer.transform.Find("NetworkReceiver").gameObject
                 );
@@ -84,8 +85,11 @@ namespace DeltaNeverUsed.AvChat
             
             var serderSM = NetworkingFunctions.SendBits();
 
+            var tempSleep = sender.NewState("sleep");
+            NetworkingFunctions.Sleep(tempSleep, activateSendingSignal, 1f);
 
-            NetworkingFunctions.CheckNetworkAvailable(serderSM, activateSendingSignal);
+
+            NetworkingFunctions.CheckNetworkAvailable(serderSM, tempSleep);
 
             /* TODO Networking
              Sending:
