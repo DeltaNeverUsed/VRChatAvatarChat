@@ -154,9 +154,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
 
             var rstChar = dataSender.NewState("Reset Char pointer");
             rstChar.Drives(_charPtr, 0);
-            
-            //Start
-            
+
             var cpTable = new List<bool>();
 
             for (int i = 0; i < 256; i++)
@@ -175,10 +173,18 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             );
 
             rstChar.TransitionsTo(t).Automatically();
-            t.Exits();
-            
-            //End
-            
+
+            var tempCheck = _fx.IntParameter("LoopCheck");
+
+            var loop = dataSender.NewState("loop");
+
+            for (int i = 0; i < 128; i++)
+                { loop.TransitionsTo(t).When(_charPtr.IsNotEqualTo(i)).And(_charSize.IsNotEqualTo(i)); }
+            loop.Exits().Automatically();
+
+            t.TransitionsTo(loop);
+            //loop.TransitionsTo(t).When()
+
             return dataSender;
         }
     }

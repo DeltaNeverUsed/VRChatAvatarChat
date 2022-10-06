@@ -7,6 +7,8 @@ using AnimatorAsCode.V0;
 using UnityEditor;
 
 using DeltaNeverUsed.AvChat.NFuncs;
+using DeltaNeverUsed.AvChat.NFuncs.Extra;
+using DeltaNeverUsed.AvChat.Screen;
 
 public class Chat : MonoBehaviour
 {
@@ -38,6 +40,18 @@ namespace DeltaNeverUsed.AvChat
             DrawDefaultInspector();
             
             if (GUILayout.Button("Create")) { Create(); }
+            if (GUILayout.Button("Create Shader Crap")) { CreateShaderCrap(); }
+        }
+
+        private void CreateShaderCrap()
+        {
+            string crap = "";
+            for (int i = 0; i < 128; i++)
+            {
+                crap += $"chars[{i}] = floor(_Char{i});\n";
+                
+            }
+            Debug.Log(crap);
         }
         
         private void Create()
@@ -47,6 +61,8 @@ namespace DeltaNeverUsed.AvChat
             var aac = AacExample.AnimatorAsCode("NetworkChat", my.avatar, my.assetContainer, GUID.Generate().ToString());
             
             var fx = aac.CreateMainFxLayer();
+            var screen = aac.CreateSupportingFxLayer("Screen");
+
             var sender = aac.CreateSupportingFxLayer("NetworkSender");
             var receiver = aac.CreateSupportingFxLayer("NetworkReceiver");
 
@@ -67,12 +83,16 @@ namespace DeltaNeverUsed.AvChat
                 my.networkContainer.transform.Find("NetworkSender").gameObject,
                 my.networkContainer.transform.Find("NetworkReceiver").gameObject
                 );
+            ScreenFunctions.Init(screen, new Vector2(16, 4));
 
             var senderEntry = sender.NewState("Entry");
             var receiverEntry = receiver.NewState("Entry");
-            
-            
-            
+
+
+            var t = funcs.FloatToBoolParam(fx, fx.FloatParameter("Test"), rBits);
+            var t2 = fx.NewState("t");
+            t.TransitionsTo(t2);
+            t2.Exits().WithTransitionDurationSeconds(1).Automatically();
 
             //Sending parameters
 
