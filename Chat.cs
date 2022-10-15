@@ -18,6 +18,7 @@ public class Chat : MonoBehaviour
 
     [Space(20)]
     public GameObject networkContainer;
+    public GameObject screenObject;
 }
 
 namespace DeltaNeverUsed.AvChat
@@ -67,32 +68,43 @@ namespace DeltaNeverUsed.AvChat
             var receiver = aac.CreateSupportingFxLayer("NetworkReceiver");
 
             //Bit params
+            var bytes = new AacFlFloatParameter[64];
+            
             var sBits = new AacFlBoolParameter[8];
             var rBits = new AacFlBoolParameter[8];
-            for (var i = 0; i < 8; i++)
+            for (var i = 0; i < sBits.Length; i++)
             {
                 sBits[i] = fx.BoolParameter($"bit{i}");
                 rBits[i] = fx.BoolParameter($"rbit{i}");
+            }
+
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = fx.FloatParameter($"storageByte{i}");
             }
             
             NetworkingFunctions.Init(
                 aac,
                 fx,
                 sender, receiver,
-                sBits, sBits,
+                sBits, rBits,
                 my.networkContainer.transform.Find("NetworkSender").gameObject,
-                my.networkContainer.transform.Find("NetworkReceiver").gameObject
+                my.networkContainer.transform.Find("NetworkReceiver").gameObject,
+                bytes
                 );
-            ScreenFunctions.Init(screen, new Vector2(16, 4));
+            ScreenFunctions.Init(aac, screen, new Vector2(32, 2), bytes, my.screenObject.GetComponent<MeshRenderer>());
+            ScreenFunctions.CreateScreen();
 
             var senderEntry = sender.NewState("Entry");
-            var receiverEntry = receiver.NewState("Entry");
+            //var receiverEntry = receiver.NewState("Entry");
+
+            NetworkingFunctions.ReceiveBits();
 
 
-            var t = funcs.FloatToBoolParam(fx, fx.FloatParameter("Test"), rBits);
-            var t2 = fx.NewState("t");
-            t.TransitionsTo(t2);
-            t2.Exits().WithTransitionDurationSeconds(1).Automatically();
+            // var t = funcs.FloatToBoolParam(fx, fx.FloatParameter("Test"), rBits);
+            // var t2 = fx.NewState("t");
+            // t.TransitionsTo(t2);
+            // t2.Exits().WithTransitionDurationSeconds(1).Automatically();
 
             //Sending parameters
 
@@ -124,9 +136,9 @@ namespace DeltaNeverUsed.AvChat
                 if chatNetworkOccupied
                     return to start
                 else 
-                    repeat until done (Send Byte and activate byteSendSignal) <<<
+                    repeat until done (Send Byte and activate byteSendSignal)
                     ChatNetworkOccupied = false
-                    return to start
+                    return to start <<
              
              Receiving:
                 char_ptr = 0

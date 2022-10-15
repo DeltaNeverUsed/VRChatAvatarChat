@@ -6,6 +6,7 @@ using UnityEngine;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 using DeltaNeverUsed.AvChat.NFuncs.Extra;
+using DeltaNeverUsed.AvChat.Screen;
 
 namespace DeltaNeverUsed.AvChat.NFuncs
 {
@@ -18,6 +19,8 @@ namespace DeltaNeverUsed.AvChat.NFuncs
 
         private static AacFlBoolParameter[] _Sbits;
         private static AacFlBoolParameter[] _Rbits;
+        private static AacFlFloatParameter[] _data;
+        private static AacFlBoolParameter _send;
 
         private static AacFlIntParameter _charPtr;
         private static AacFlIntParameter _charSize;
@@ -30,7 +33,8 @@ namespace DeltaNeverUsed.AvChat.NFuncs
 
         public static void Init(AacFlBase tAac, AacFlLayer tFX, AacFlLayer tSender, AacFlLayer tReceiver,
             AacFlBoolParameter[] tSBits, AacFlBoolParameter[] tRBits,
-            GameObject tNetworkSender, GameObject tNetworkReceiver)
+            GameObject tNetworkSender, GameObject tNetworkReceiver,
+            AacFlFloatParameter[] tData)
         {
             _aac = tAac;
             _fx = tFX;
@@ -38,12 +42,15 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             _receiver = tReceiver;
             _Sbits = tSBits;
             _Rbits = tRBits;
+            _data = tData;
 
             _networkSender = tNetworkSender;
             _networkReceiver = tNetworkReceiver;
 
             _charPtr = _fx.IntParameter("char_ptr");
             _charSize = _fx.IntParameter("char_size");
+
+            _send = _fx.BoolParameter("sent");
         }
 
         public static AacFlState Reset(AacFlLayer layer)
@@ -52,7 +59,8 @@ namespace DeltaNeverUsed.AvChat.NFuncs
                 return ResetNodes[layer];
 
             var resetNode = layer.NewState("Reset", 10, 10);
-            
+            resetNode.Drives(_charPtr, 0);
+
             resetNode.WithAnimation(_aac.NewClip().Animating(clip =>
             {
                 clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
@@ -136,6 +144,13 @@ namespace DeltaNeverUsed.AvChat.NFuncs
                                 "m_LocalPosition.z")
                             .WithOneFrame(inputT[o + state * inputP.Length] ? 0f : 0.5f);
                     }
+                    
+                    var s2 = _networkSender.transform.GetChild(inputP.Length);
+                    clip.Animates(s2, "m_LocalPosition.x").WithOneFrame(s2.localPosition.x);
+                    clip.Animates(s2, "m_LocalPosition.y").WithOneFrame(s2.localPosition.y);
+                    clip.Animates(s2,
+                            "m_LocalPosition.z")
+                        .WithOneFrame(inputT[state * inputP.Length] ? 0f : 0.5f);
                 }));
                     
                 for (int i = 0; i < inputP.Length; i++)
@@ -179,13 +194,67 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             var loop = dataSender.NewState("loop");
 
             for (int i = 0; i < 128; i++)
-                { loop.TransitionsTo(t).When(_charPtr.IsNotEqualTo(i)).And(_charSize.IsNotEqualTo(i)); }
-            loop.Exits().Automatically();
+            { loop.TransitionsTo(t).When(_charPtr.IsNotEqualTo(i)).And(_charSize.IsNotEqualTo(i)); }
+            
+            loop.TransitionsTo(Reset(_sender)).Automatically();
 
             t.TransitionsTo(loop);
             //loop.TransitionsTo(t).When()
 
             return dataSender;
+        }
+        
+        
+        
+        
+        // Receive stuff
+        
+        public static AacFlStateMachine copy_byte(AacFlFloatParameter src)
+        {
+            var sm = _receiver.NewSubStateMachine("Copy To Storage");
+            
+            for (int i = 0; i < _data.Length; i++)
+            {
+                var copy = sm.NewState($"copy_byte");
+                copy.DrivingCopies(src, _data[i]);
+                copy.DrivingIncreases(_charPtr, 1);
+
+                sm.EntryTransitionsTo(copy).When(_charPtr.IsEqualTo(i));
+                copy.Exits().Automatically();
+            }
+            
+            return sm;
+        }
+
+        public static void ReceiveBits()
+        {
+            var tempFloatStorage = _receiver.FloatParameter("tempFloatStorage");
+
+            var entry = _receiver.NewState("Entry");
+
+            var tempCopy = funcs.BoolToFloatParam(_receiver, _Rbits, tempFloatStorage);
+
+            var copy = copy_byte(tempFloatStorage);
+
+            entry.TransitionsTo(tempCopy).When(_send.IsTrue());
+            tempCopy.TransitionsTo(copy);
+            
+            var pushMessage = ScreenFunctions.push_message(_receiver);
+            pushMessage.Drives(_charPtr, 0);
+            pushMessage.Exits().Automatically();
+
+            entry.TransitionsTo(pushMessage).When(_receiver.BoolParameter("NetworkOccupied").IsFalse())
+                .And(_charPtr.IsGreaterThan(0));
+             
+            
+            //tempCopy.TransitionsTo(tempCopy).wh
+            
+            
+            copy.TransitionsTo(entry);
+
+
+
+
         }
     }
 }
