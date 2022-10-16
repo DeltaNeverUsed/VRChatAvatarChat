@@ -28,6 +28,8 @@ namespace DeltaNeverUsed.AvChat.NFuncs
         private static GameObject _networkSender;
         private static GameObject _networkReceiver;
 
+        private static int _messageLength;
+
         private static readonly Dictionary<AacFlLayer, AacFlState> ResetNodes =
             new Dictionary<AacFlLayer, AacFlState>();
 
@@ -43,6 +45,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             _Sbits = tSBits;
             _Rbits = tRBits;
             _data = tData;
+            _messageLength = 32;
 
             _networkSender = tNetworkSender;
             _networkReceiver = tNetworkReceiver;
@@ -213,10 +216,10 @@ namespace DeltaNeverUsed.AvChat.NFuncs
         {
             var sm = _receiver.NewSubStateMachine("Copy To Storage");
             
-            for (int i = 0; i < _data.Length; i++)
+            for (int i = 0; i < _messageLength; i++)
             {
                 var copy = sm.NewState($"copy_byte");
-                copy.DrivingCopies(src, _data[i]);
+                copy.DrivingCopies(src, _data[i+_messageLength]);
                 copy.DrivingIncreases(_charPtr, 1);
 
                 sm.EntryTransitionsTo(copy).When(_charPtr.IsEqualTo(i));
@@ -239,7 +242,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             entry.TransitionsTo(tempCopy).When(_send.IsTrue());
             tempCopy.TransitionsTo(copy);
             
-            var pushMessage = ScreenFunctions.push_message(_receiver);
+            var pushMessage = ScreenFunctions.push_message(_receiver, false);
             pushMessage.Drives(_charPtr, 0);
             pushMessage.Exits().Automatically();
 

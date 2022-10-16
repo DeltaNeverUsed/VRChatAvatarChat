@@ -198,7 +198,7 @@ Material:
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _SizeX: 16
-    - _SizeY: 4
+    - _SizeY: 6
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1

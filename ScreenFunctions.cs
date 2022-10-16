@@ -1,4 +1,5 @@
 ﻿#if UNITY_EDITOR
+using System;
 using AnimatorAsCode.V0;
 using UnityEngine;
 
@@ -59,22 +60,23 @@ namespace  DeltaNeverUsed.AvChat.Screen
             last.Exits().Automatically();
         }
 
-        public static AacFlState push_message(AacFlLayer tScreenLayer)
+        public static AacFlState push_message(AacFlLayer tScreenLayer, bool includeFirst = false)
         {
             var t = tScreenLayer.NewState("Push");
             
             for (int x = 0; x < _screenSize.x; x++)
             {
-                t.Drives(_data[x], 0);
+                t.Drives(_data[x + (int)_screenSize.x * Convert.ToInt32(!includeFirst)], 0);
             }
-
-            for (int y = 0; y < (int)_screenSize.y-1; y++)
+            
+            for (int y = 0; y < (int)_screenSize.y - Convert.ToInt32(!includeFirst) - 1; y++)
             {
                 for (int x = 0; x < _screenSize.x; x++)
                 {
                     int temp = (int)_screenSize.y - 1 - y;
+                    //temp += Convert.ToInt32(!includeFirst);
                     //Debug.Log(x + (int)_screenSize.x * temp);
-                    t.DrivingCopies(_data[x + (int)_screenSize.x * (temp-1)], _data[x + (int)_screenSize.x * temp]);
+                    t.DrivingCopies(_data[(x) + (int)_screenSize.x * (temp-1)], _data[x + (int)_screenSize.x * temp]);
                 }
             }
 

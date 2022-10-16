@@ -1,4 +1,5 @@
 ﻿#if UNITY_EDITOR
+using System;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using UnityEditor.Animations;
@@ -9,6 +10,7 @@ using UnityEditor;
 using DeltaNeverUsed.AvChat.NFuncs;
 using DeltaNeverUsed.AvChat.NFuncs.Extra;
 using DeltaNeverUsed.AvChat.Screen;
+using DeltaNeverUsed.AvChat.Keypad;
 
 public class Chat : MonoBehaviour
 {
@@ -19,6 +21,7 @@ public class Chat : MonoBehaviour
     [Space(20)]
     public GameObject networkContainer;
     public GameObject screenObject;
+    public GameObject keypadObject;
 }
 
 namespace DeltaNeverUsed.AvChat
@@ -41,20 +44,8 @@ namespace DeltaNeverUsed.AvChat
             DrawDefaultInspector();
             
             if (GUILayout.Button("Create")) { Create(); }
-            if (GUILayout.Button("Create Shader Crap")) { CreateShaderCrap(); }
         }
 
-        private void CreateShaderCrap()
-        {
-            string crap = "";
-            for (int i = 0; i < 128; i++)
-            {
-                crap += $"chars[{i}] = floor(_Char{i});\n";
-                
-            }
-            Debug.Log(crap);
-        }
-        
         private void Create()
         {
             var my = (Chat)target;
@@ -63,12 +54,14 @@ namespace DeltaNeverUsed.AvChat
             
             var fx = aac.CreateMainFxLayer();
             var screen = aac.CreateSupportingFxLayer("Screen");
+            var keypadLayer = aac.CreateSupportingFxLayer("Keypad");
 
             var sender = aac.CreateSupportingFxLayer("NetworkSender");
             var receiver = aac.CreateSupportingFxLayer("NetworkReceiver");
 
             //Bit params
-            var bytes = new AacFlFloatParameter[64];
+            var bytes = new AacFlFloatParameter[96];
+            var keypadBytes = new AacFlFloatParameter[32];
             
             var sBits = new AacFlBoolParameter[8];
             var rBits = new AacFlBoolParameter[8];
@@ -82,6 +75,7 @@ namespace DeltaNeverUsed.AvChat
             {
                 bytes[i] = fx.FloatParameter($"storageByte{i}");
             }
+            Array.Copy(bytes, keypadBytes, keypadBytes.Length);
             
             NetworkingFunctions.Init(
                 aac,
@@ -92,8 +86,11 @@ namespace DeltaNeverUsed.AvChat
                 my.networkContainer.transform.Find("NetworkReceiver").gameObject,
                 bytes
                 );
-            ScreenFunctions.Init(aac, screen, new Vector2(32, 2), bytes, my.screenObject.GetComponent<MeshRenderer>());
+            ScreenFunctions.Init(aac, screen, new Vector2(32, 3), bytes, my.screenObject.GetComponent<MeshRenderer>());
             ScreenFunctions.CreateScreen();
+
+            KeypadCreator.Init(aac, keypadLayer, my.keypadObject, keypadBytes, new Vector2(3,3));
+            KeypadCreator.CreateFields();
 
             var senderEntry = sender.NewState("Entry");
             //var receiverEntry = receiver.NewState("Entry");
