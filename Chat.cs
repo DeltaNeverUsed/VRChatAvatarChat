@@ -57,6 +57,7 @@ namespace DeltaNeverUsed.AvChat
             var keypadLayer = aac.CreateSupportingFxLayer("Keypad");
 
             var sender = aac.CreateSupportingFxLayer("NetworkSender");
+            var bitsLayer = aac.CreateSupportingFxLayer("Bittos");
             var receiver = aac.CreateSupportingFxLayer("NetworkReceiver");
 
             //Bit params
@@ -70,6 +71,8 @@ namespace DeltaNeverUsed.AvChat
                 sBits[i] = fx.BoolParameter($"bit{i}");
                 rBits[i] = fx.BoolParameter($"rbit{i}");
             }
+            
+            funcs.Init(fx);
 
             for (int i = 0; i < bytes.Length; i++)
             {
@@ -80,7 +83,7 @@ namespace DeltaNeverUsed.AvChat
             NetworkingFunctions.Init(
                 aac,
                 fx,
-                sender, receiver,
+                sender, receiver, bitsLayer,
                 sBits, rBits,
                 my.networkContainer.transform.Find("NetworkSender").gameObject,
                 my.networkContainer.transform.Find("NetworkReceiver").gameObject,
@@ -91,34 +94,44 @@ namespace DeltaNeverUsed.AvChat
 
             KeypadCreator.Init(aac, keypadLayer, my.keypadObject, keypadBytes, new Vector2(3,3));
             KeypadCreator.CreateFields();
+            
+            
+            var sendButton = aac.CreateSupportingFxLayer("SendButton");
+            var sendButtonEntry = sendButton.NewState("Entry");
+            var sendMessage = sendButton.NewState("SendMessage");
+
+            sendMessage.Drives(fx.BoolParameter("messageReady"), true);
+            sendButtonEntry.TransitionsTo(sendMessage).When(fx.BoolParameter("ShootMessage").IsTrue());
+            sendMessage.Exits().Automatically();
 
             var senderEntry = sender.NewState("Entry");
             //var receiverEntry = receiver.NewState("Entry");
+            
 
             NetworkingFunctions.ReceiveBits();
-
-
-            // var t = funcs.FloatToBoolParam(fx, fx.FloatParameter("Test"), rBits);
-            // var t2 = fx.NewState("t");
-            // t.TransitionsTo(t2);
-            // t2.Exits().WithTransitionDurationSeconds(1).Automatically();
+            
 
             //Sending parameters
 
             //Sending Logic
-            var activateSendingSignal = NetworkingFunctions.ActivateSendingSignal();
-            
-            NetworkingFunctions.CanSend(activateSendingSignal, senderEntry);
+            var aaa = sender.NewState("temp thing");
+            NetworkingFunctions.CanSend(aaa, senderEntry);
+
+            var pushMsgSendparam = fx.BoolParameter("pushMsgSendparam");
+
+            var pushMsgSend = ScreenFunctions.push_message(sender, true);
+            senderEntry.TransitionsTo(pushMsgSend).When(pushMsgSendparam.IsFalse())
+                .And(fx.BoolParameter("messageReady").IsFalse())
+                .And(fx.BoolParameter("IsLocal").IsTrue());
+            pushMsgSend.Exits().Automatically();
+
+            pushMsgSend.Drives(pushMsgSendparam, true);
+            aaa.Drives(pushMsgSendparam, false);
 
             //var tempDst = sender.NewState("Temp");
             
-            var serderSM = NetworkingFunctions.SendBits();
-
-            var tempSleep = sender.NewState("sleep");
-            NetworkingFunctions.Sleep(tempSleep, activateSendingSignal, 1f);
-
-
-            NetworkingFunctions.CheckNetworkAvailable(serderSM, tempSleep);
+            var senderSM = NetworkingFunctions.SendBits();
+            aaa.TransitionsTo(senderSM).Automatically();
 
             /* TODO Networking
              Sending:

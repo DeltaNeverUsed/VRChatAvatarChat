@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: Text
   m_Shader: {fileID: 4800000, guid: 7c518d32ba16c2743a74d5a2ce7cf4b4, type: 3}
-  m_ShaderKeywords: 
+  m_ShaderKeywords: _SWAP_ON
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -128,7 +128,7 @@ Material:
     - _Char45: 0
     - _Char46: 0
     - _Char47: 0
-    - _Char48: 1
+    - _Char48: 3
     - _Char49: 0
     - _Char5: 38
     - _Char50: 0
@@ -202,6 +202,7 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
+    - _Swap: 1
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:

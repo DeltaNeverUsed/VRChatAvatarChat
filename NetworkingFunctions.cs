@@ -16,11 +16,13 @@ namespace DeltaNeverUsed.AvChat.NFuncs
         private static AacFlLayer _fx;
         private static AacFlLayer _sender;
         private static AacFlLayer _receiver;
+        private static AacFlLayer _bitsLayer;
 
         private static AacFlBoolParameter[] _Sbits;
         private static AacFlBoolParameter[] _Rbits;
         private static AacFlFloatParameter[] _data;
         private static AacFlBoolParameter _send;
+        private static AacFlBoolParameter _sending;
 
         private static AacFlIntParameter _charPtr;
         private static AacFlIntParameter _charSize;
@@ -33,7 +35,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
         private static readonly Dictionary<AacFlLayer, AacFlState> ResetNodes =
             new Dictionary<AacFlLayer, AacFlState>();
 
-        public static void Init(AacFlBase tAac, AacFlLayer tFX, AacFlLayer tSender, AacFlLayer tReceiver,
+        public static void Init(AacFlBase tAac, AacFlLayer tFX, AacFlLayer tSender, AacFlLayer tReceiver, AacFlLayer tBitsLayer,
             AacFlBoolParameter[] tSBits, AacFlBoolParameter[] tRBits,
             GameObject tNetworkSender, GameObject tNetworkReceiver,
             AacFlFloatParameter[] tData)
@@ -42,6 +44,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             _fx = tFX;
             _sender = tSender;
             _receiver = tReceiver;
+            _bitsLayer = tBitsLayer;
             _Sbits = tSBits;
             _Rbits = tRBits;
             _data = tData;
@@ -54,6 +57,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             _charSize = _fx.IntParameter("char_size");
 
             _send = _fx.BoolParameter("sent");
+            _sending = _fx.BoolParameter("sending");
         }
 
         public static AacFlState Reset(AacFlLayer layer)
@@ -63,21 +67,36 @@ namespace DeltaNeverUsed.AvChat.NFuncs
 
             var resetNode = layer.NewState("Reset", 10, 10);
             resetNode.Drives(_charPtr, 0);
+            resetNode.Drives(_sender.BoolParameter("messageReady"), false);
+            resetNode.Drives(_sending, false);
+            resetNode.Drives(_sender.BoolParameter("sendo"), false);
 
-            resetNode.WithAnimation(_aac.NewClip().Animating(clip =>
+            var auiou = _aac.NewClip().Toggling(_networkSender, false);
+                
+            
+            for (int o = 0; o < 8; o++)
             {
-                clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
-                clip.Animates(_networkSender.transform, "m_LocalPosition.y").WithOneFrame(_networkSender.transform.localPosition.y);
-                clip.Animates(_networkSender.transform, "m_LocalPosition.z").WithOneFrame(0.5f);
+                var s = _networkSender.transform.GetChild(o);
+                auiou.Toggling(s.gameObject, false);
+            }
+            resetNode.WithAnimation(auiou);
+                
+                /*.Animating(clip =>
+            {
+                clip.Animates(_networkSender.transform, "m_IsActive").WithOneFrame(0);
+                //clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
+                //clip.Animates(_networkSender.transform, "m_LocalPosition.y").WithOneFrame(_networkSender.transform.localPosition.y);
+                //clip.Animates(_networkSender.transform, "m_LocalPosition.z").WithOneFrame(0.5f);
                 
                 for (int o = 0; o < 8; o++)
                 {
                     var s = _networkSender.transform.GetChild(o);
-                    clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
-                    clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
-                    clip.Animates(s, "m_LocalPosition.z").WithOneFrame(0.5f);
+                    clip.Animates(s, "m_IsActive").WithOneFrame(0);
+                    //clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
+                    //clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
+                    //clip.Animates(s, "m_LocalPosition.z").WithOneFrame(0.5f);
                 }
-            }));
+            }));*/
 
             resetNode.Exits().Automatically();
             
@@ -90,27 +109,49 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             // Continue to dst state if the message is ready to be sent and the network isn't Occupied
             smSrc.TransitionsTo(smDst).When(
                 _sender.BoolParameter("messageReady").IsTrue()).And(
-                _sender.BoolParameter("NetworkOccupied").IsFalse()); 
+                _sender.BoolParameter("NetworkOccupied").IsFalse()).And(
+                _sender.BoolParameter("IsLocal").IsTrue()); 
         }
         public static void CanSend(AacFlStateMachine smDst, AacFlState smSrc)
         {
             // Continue to dst state if the message is ready to be sent and the network isn't Occupied
             smSrc.TransitionsTo(smDst).When(
                 _sender.BoolParameter("messageReady").IsTrue()).And(
-                _sender.BoolParameter("NetworkOccupied").IsFalse()); 
+                _sender.BoolParameter("NetworkOccupied").IsFalse()).And(
+                _sender.BoolParameter("IsLocal").IsTrue()); 
         }
 
-        public static AacFlState ActivateSendingSignal()
+        public static AacFlStateMachine ActivateSendingSignal()
         {
-            var activateSendingSignal = _sender.NewState("NetworkOccupied")
-                .WithAnimation(_aac.NewClip().Animating(clip =>
+            var sm = _bitsLayer.NewSubStateMachine("NetworkOccupiedSM");
+            var activateSendingSignal = sm.NewState("NetworkOccupied")
+                .WithAnimation(_aac.NewClip().Toggling(_networkSender, true));
+                    
+                    /*.Animating(clip =>
                 {
-                    clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
-                    clip.Animates(_networkSender.transform, "m_LocalPosition.y").WithOneFrame(_networkSender.transform.localPosition.y);
-                    clip.Animates(_networkSender.transform, "m_LocalPosition.z").WithOneFrame(0f);
-                }));
+                    //clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
+                    //clip.Animates(_networkSender.transform, "m_LocalPosition.y").WithOneFrame(_networkSender.transform.localPosition.y);
+                    //clip.Animates(_networkSender.transform, "m_LocalPosition.z").WithOneFrame(0f);
+                    clip.Animates(_networkSender.transform, "m_IsActive").WithOneFrame(1);
+                }));*/
+            var deactivateSendingSignal = sm.NewState("NetworkOccupied")
+                .WithAnimation(_aac.NewClip().Toggling(_networkSender, false));
+                    
+                    /*.Animating(clip =>
+                {
+                    //clip.Animates(_networkSender.transform, "m_LocalPosition.x").WithOneFrame(_networkSender.transform.localPosition.x);
+                    //clip.Animates(_networkSender.transform, "m_LocalPosition.y").WithOneFrame(_networkSender.transform.localPosition.y);
+                    //clip.Animates(_networkSender.transform, "m_LocalPosition.z").WithOneFrame(0.5f);
+                    clip.Animates(_networkSender, "m_IsActive").WithOneFrame(0);
+                }));*/
+            
+            sm.EntryTransitionsTo(activateSendingSignal).When(_sending.IsTrue());
+            sm.EntryTransitionsTo(deactivateSendingSignal).When(_sending.IsFalse());
 
-            return activateSendingSignal;
+            activateSendingSignal.Exits().Automatically();
+            deactivateSendingSignal.Exits().Automatically();
+
+            return sm;
         }
 
         public static void Sleep(AacFlState smDst, AacFlState smSrc, float seconds)
@@ -123,38 +164,48 @@ namespace DeltaNeverUsed.AvChat.NFuncs
             CanSend(smDst, smSrc);
             smSrc.TransitionsTo(Reset(_sender)).Automatically();
         }
+        public static void CheckNetworkAvailable(AacFlState smDst, AacFlState smSrc)
+        {
+            CanSend(smDst, smSrc);
+            smSrc.TransitionsTo(Reset(_sender)).Automatically();
+        }
         
         //Thanks past me
-        private static AacFlStateMachine CreateBitAnimations(AacFlStateMachine sm, AacFlBoolParameter[] inputP, bool[] inputT)
+        private static AacFlStateMachine CreateBitAnimations(AacFlStateMachine smLocal, AacFlBoolParameter[] inputP, bool[] inputT)
         {
-            var smLocal = sm.NewSubStateMachine("BitAnimations");
-
+            var entry = smLocal.NewState("Entry"); // honestly not sure why this is needed, but it is
             var stateAmount = inputT.Length / inputP.Length;
             for (int state = 0; state < stateAmount; state++)
             {
                 var tstate = smLocal.NewState($"{state}_BitAnimations");
-                var conditions = smLocal.EntryTransitionsTo(tstate).WhenConditions();
-
+                var conditions = entry.TransitionsTo(tstate).WhenConditions();
                 
-                tstate.WithAnimation(_aac.NewClip().Animating(clip =>
+                var aeiou = _aac.NewClip();
+                for (int o = 0; o < inputP.Length; o++)
+                {
+                    var s = _networkSender.transform.GetChild(o);
+                    //clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
+                    //clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
+                    //clip.Animates(s,
+                    //        "m_LocalPosition.z")
+                    //    .WithOneFrame(inputT[o + state * inputP.Length] ? 0f : 0.5f);
+                    aeiou.Toggling(s.gameObject, inputT[o + state * inputP.Length]);
+                }
+                tstate.WithAnimation(aeiou);
+                
+                /*.Animating(clip =>
                 {
                     for (int o = 0; o < inputP.Length; o++)
                     {
                         var s = _networkSender.transform.GetChild(o);
-                        clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
-                        clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
-                        clip.Animates(s,
-                                "m_LocalPosition.z")
-                            .WithOneFrame(inputT[o + state * inputP.Length] ? 0f : 0.5f);
+                        //clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
+                        //clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
+                        //clip.Animates(s,
+                        //        "m_LocalPosition.z")
+                        //    .WithOneFrame(inputT[o + state * inputP.Length] ? 0f : 0.5f);
+                        clip.Animates(s, "m_IsActive").WithOneFrame(inputT[o + state * inputP.Length] ? 1 : 0);
                     }
-                    
-                    var s2 = _networkSender.transform.GetChild(inputP.Length);
-                    clip.Animates(s2, "m_LocalPosition.x").WithOneFrame(s2.localPosition.x);
-                    clip.Animates(s2, "m_LocalPosition.y").WithOneFrame(s2.localPosition.y);
-                    clip.Animates(s2,
-                            "m_LocalPosition.z")
-                        .WithOneFrame(inputT[state * inputP.Length] ? 0f : 0.5f);
-                }));
+                }));*/
                     
                 for (int i = 0; i < inputP.Length; i++)
                 {
@@ -172,6 +223,7 @@ namespace DeltaNeverUsed.AvChat.NFuncs
 
             var rstChar = dataSender.NewState("Reset Char pointer");
             rstChar.Drives(_charPtr, 0);
+            rstChar.Drives(_sending, true);
 
             var cpTable = new List<bool>();
 
@@ -184,22 +236,92 @@ namespace DeltaNeverUsed.AvChat.NFuncs
                 }
             }
             
+            // Bit animations
+            var bitAnimations = _bitsLayer.NewSubStateMachine("BitAnimations");
             var t = CreateBitAnimations(
-                dataSender,
+                bitAnimations,
                 _Sbits,
                 cpTable.ToArray()
             );
+            
+            var activateSendingSignal = ActivateSendingSignal();
 
-            rstChar.TransitionsTo(t).Automatically();
+            t.TransitionsTo(activateSendingSignal);
+            
+            var buddo = _bitsLayer.NewSubStateMachine("i don't know");
+
+            var sendON = buddo.NewState("sendON")
+                .WithAnimation(_aac.NewClip()
+                    .Toggling(_networkSender.transform.GetChild(_networkSender.transform.childCount - 1).gameObject, true));
+                    
+                    /*.Animating(clip => {
+                    var s = _networkSender.transform.GetChild(_networkSender.transform.childCount-1);
+                    //clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
+                    //clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
+                    //clip.Animates(s, "m_LocalPosition.z").WithOneFrame(0f);
+                    clip.Animates(s, "m_IsActive").WithOneFrame(1);
+                }));*/
+            var sendOFF = buddo.NewState("sendOFF")
+                .WithAnimation(_aac.NewClip()
+                    .Toggling(_networkSender.transform.GetChild(_networkSender.transform.childCount - 1).gameObject, false));
+                    
+                    /*.Animating(clip => {
+                    var s = _networkSender.transform.GetChild(_networkSender.transform.childCount-1);
+                    //clip.Animates(s, "m_LocalPosition.x").WithOneFrame(s.localPosition.x);
+                    //clip.Animates(s, "m_LocalPosition.y").WithOneFrame(s.localPosition.y);
+                    //clip.Animates(s, "m_LocalPosition.z").WithOneFrame(0.5f);
+                    clip.Animates(s, "m_IsActive").WithOneFrame(0);
+                })); */
+            buddo.EntryTransitionsTo(sendON).When(_fx.BoolParameter("sendo").IsTrue());
+            buddo.EntryTransitionsTo(sendOFF).When(_fx.BoolParameter("sendo").IsFalse());
+            sendON.Exits().Automatically();
+            sendOFF.Exits().Automatically();
+
+            buddo.Exits();
+
+            t.TransitionsTo(buddo);
+            activateSendingSignal.TransitionsTo(buddo);
+            // Probably shouldn't be in here
+
+            var storageToByte = dataSender.NewSubStateMachine("Storage to Byte");
+            var tempFloatStorage = _sender.FloatParameter("tempFloatStorage");
+            
+            var ftb = funcs.FloatToBoolParam(storageToByte, tempFloatStorage, _Sbits);
+            
+            for (int i = 0; i < _data.Length; i++)
+            {
+                var tempCopy = storageToByte.NewState($"Copy to temp {i}");
+                tempCopy.DrivingCopies(_data[i], tempFloatStorage);
+                
+                storageToByte.EntryTransitionsTo(tempCopy).When(_charPtr.IsEqualTo(i));
+                tempCopy.TransitionsTo(ftb).Automatically();
+            }
+
+            ftb.Exits();
+
+
+            rstChar.TransitionsTo(storageToByte).Automatically();
 
             var tempCheck = _fx.IntParameter("LoopCheck");
 
             var loop = dataSender.NewState("loop");
+            loop.Drives(_sender.BoolParameter("sendo"), true);
+            
+            var tempSleep = dataSender.NewState("sleep");
+
+            var temptemp = dataSender.NewState("temp kayyy");
+            NetworkingFunctions.Sleep(tempSleep, loop, 1f);
+            NetworkingFunctions.CheckNetworkAvailable(temptemp, tempSleep);
+            
+            temptemp.Drives(_sender.BoolParameter("sendo"), false);
+            temptemp.DrivingIncreases(_charPtr, 1);
 
             for (int i = 0; i < 128; i++)
-            { loop.TransitionsTo(t).When(_charPtr.IsNotEqualTo(i)).And(_charSize.IsNotEqualTo(i)); }
+            { temptemp.TransitionsTo(storageToByte).When(_charPtr.IsLessThan(i+1)).And(_charSize.IsGreaterThan(i)); }
             
-            loop.TransitionsTo(Reset(_sender)).Automatically();
+            temptemp.TransitionsTo(Reset(_sender)).When(_fx.BoolParameter("UNUSED").IsFalse());
+
+            storageToByte.TransitionsTo(loop);
 
             t.TransitionsTo(loop);
             //loop.TransitionsTo(t).When()
@@ -239,19 +361,32 @@ namespace DeltaNeverUsed.AvChat.NFuncs
 
             var copy = copy_byte(tempFloatStorage);
 
-            entry.TransitionsTo(tempCopy).When(_send.IsTrue());
             tempCopy.TransitionsTo(copy);
             
+            
+            var sent = _fx.BoolParameter("pushtempsent");
+
             var pushMessage = ScreenFunctions.push_message(_receiver, false);
             pushMessage.Drives(_charPtr, 0);
+            pushMessage.Drives(sent, true);
             pushMessage.Exits().Automatically();
+            
+            
+            
+            entry.TransitionsTo(pushMessage).When(_receiver.BoolParameter("NetworkOccupied").IsTrue())
+                .And(_charPtr.IsGreaterThan(0))
+                .And(_sending.IsFalse())
+                .And(sent.IsFalse());
+            entry.TransitionsTo(tempCopy).When(_send.IsTrue()).And(_receiver.BoolParameter("NetworkOccupied").IsTrue());
 
-            entry.TransitionsTo(pushMessage).When(_receiver.BoolParameter("NetworkOccupied").IsFalse())
-                .And(_charPtr.IsGreaterThan(0));
-             
-            
+
             //tempCopy.TransitionsTo(tempCopy).wh
+
+            var resetSent = _receiver.NewState("Reset Sent");
+            resetSent.Drives(sent, false);
+            resetSent.Exits().Automatically();
             
+            entry.TransitionsTo(resetSent).When(_send.IsFalse()).And(_receiver.BoolParameter("NetworkOccupied").IsFalse());
             
             copy.TransitionsTo(entry);
 

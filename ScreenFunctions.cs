@@ -63,11 +63,9 @@ namespace  DeltaNeverUsed.AvChat.Screen
         public static AacFlState push_message(AacFlLayer tScreenLayer, bool includeFirst = false)
         {
             var t = tScreenLayer.NewState("Push");
-            
-            for (int x = 0; x < _screenSize.x; x++)
-            {
-                t.Drives(_data[x + (int)_screenSize.x * Convert.ToInt32(!includeFirst)], 0);
-            }
+            if (includeFirst)
+                t.Drives(_screenLayer.IntParameter("char_size"), 0);
+            t.Drives(_screenLayer.IntParameter("char_ptr"), 0);
             
             for (int y = 0; y < (int)_screenSize.y - Convert.ToInt32(!includeFirst) - 1; y++)
             {
@@ -78,6 +76,11 @@ namespace  DeltaNeverUsed.AvChat.Screen
                     //Debug.Log(x + (int)_screenSize.x * temp);
                     t.DrivingCopies(_data[(x) + (int)_screenSize.x * (temp-1)], _data[x + (int)_screenSize.x * temp]);
                 }
+            }
+            
+            for (int x = 0; x < _screenSize.x; x++)
+            {
+                t.Drives(_data[x + (int)_screenSize.x * Convert.ToInt32(!includeFirst)], 0);
             }
 
             return t;

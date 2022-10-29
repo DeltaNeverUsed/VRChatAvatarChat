@@ -7,6 +7,7 @@
         _SizeY ("Size Y", int)          = 8
         _FontX ("Font X", int)          = 16
         _FontY ("Font Y", int)          = 16
+        [MaterialToggle] _Swap ("Swap every other line", int) = 0
         
         _Char0 ("_Char0", float)        = 0
         _Char1 ("_Char1", float)        = 0
@@ -300,6 +301,7 @@
             int _SizeY;
             int _FontX;
             int _FontY;
+            int _Swap;
             
             v2f vert (appdata v)
             {
@@ -451,12 +453,21 @@
 
                 
                 uint current_char = floor(text_uv.x) + floor(text_uv.y) * _SizeX;
+
+                if ((bool)_Swap)
+                {
+                    current_char-=_SizeX;
+                    if ((int)text_uv.y % 2 == 0)
+                    {
+                        current_char+=_SizeX*2;
+                    }
+                }
                 
                 //return float4(chars[current_char] / 16, 0, 0, 1);
 
                 const float cur_char_val = current_char < 128 ? chars[current_char]+_FontX : _FontX; //sshh it works
                 const half2 char_pos = half2(cur_char_val % _FontX, -floor(cur_char_val / _FontX));
-
+                
                 //return float4(frac(char_pos / 16), 0, 1);
 
                 const half2 char_uv = frac(text_uv) / half2(_FontX, _FontY) + char_pos / half2(_FontX, _FontY);
